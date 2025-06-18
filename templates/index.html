@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Gift Recommendation System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f7f7f8;
+            color: #202123;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 768px;
+            margin: 0 auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e5;
+            background-color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #202123;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message.user .message-content {
+            background-color: #10a37f;
+            color: white;
+            margin-left: 48px;
+        }
+
+        .message.assistant .message-content {
+            background-color: #f7f7f8;
+            color: #202123;
+            margin-right: 48px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background-color: #10a37f;
+            color: white;
+        }
+
+        .message.assistant .message-avatar {
+            background-color: #19c37d;
+            color: white;
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .step-indicator {
+            display: inline-block;
+            background-color: #10a37f;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .loading::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            border: 2px solid #e5e5e5;
+            border-top: 2px solid #10a37f;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .input-container {
+            padding: 20px;
+            border-top: 1px solid #e5e5e5;
+            background-color: white;
+        }
+
+        .input-wrapper {
+            position: relative;
+            background-color: #f7f7f8;
+            border-radius: 12px;
+            border: 1px solid #e5e5e5;
+            padding: 12px 50px 12px 16px;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #10a37f;
+            box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+        }
+
+        .input-field {
+            width: 100%;
+            border: none;
+            background: transparent;
+            outline: none;
+            resize: none;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #202123;
+            min-height: 24px;
+            max-height: 120px;
+        }
+
+        .input-field::placeholder {
+            color: #9ca3af;
+        }
+
+        .send-button {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: #10a37f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .send-button:hover:not(:disabled) {
+            background-color: #0d8a6b;
+        }
+
+        .send-button:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .question-list {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+        }
+
+        .question-list li {
+            padding: 6px 0;
+            color: #374151;
+        }
+
+        .question-list li strong {
+            color: #10a37f;
+        }
+
+        .selection-container {
+            background-color: #f9fafb;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+
+        .selection-title {
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #202123;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+        }
+
+        .selection-item {
+            background-color: white;
+            border: 2px solid #e5e5e5;
+            border-radius: 6px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .selection-item:hover {
+            border-color: #10a37f;
+            background-color: #f0fdf4;
+        }
+
+        .selection-item.selected {
+            border-color: #10a37f;
+            background-color: #ecfdf5;
+        }
+
+        .selection-item-number {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background-color: #10a37f;
+            color: white;
+            border-radius: 50%;
+            line-height: 24px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .selection-item-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #202123;
+            margin-bottom: 4px;
+        }
+
+        .selection-item-description {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .confirm-button {
+            background-color: #10a37f;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .confirm-button:hover:not(:disabled) {
+            background-color: #0d8a6b;
+        }
+
+        .confirm-button:disabled {
+            background-color: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .final-recommendations {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 12px 0;
+        }
+
+        .final-recommendations h3 {
+            color: #059669;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .recommendation-category {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #d1fae5;
+        }
+
+        .recommendation-category:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .category-title {
+            font-weight: 600;
+            color: #202123;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .product-card {
+            background-color: white;
+            border: 1px solid #e5e5e5;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 8px 0;
+            transition: box-shadow 0.2s;
+        }
+
+        .product-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .product-title {
+            font-weight: 600;
+            color: #202123;
+            margin-bottom: 8px;
+        }
+
+        .product-description {
+            color: #6b7280;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .buy-link {
+            display: inline-block;
+            background-color: #10a37f;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        .buy-link:hover {
+            background-color: #0d8a6b;
+        }
+
+        .error-message {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 12px 0;
+        }
+
+        @media (max-width: 640px) {
+            .message.user .message-content {
+                margin-left: 24px;
+            }
+            
+            .message.assistant .message-content {
+                margin-right: 24px;
+            }
+
+            .selection-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI Gift Recommendation System</h1>
+            <p>Get personalized gift recommendations from community discussions</p>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <div class="message-avatar">AI</div>
+                <div class="message-content">
+                    <div class="step-indicator">Step 1</div>
+                    <p>Welcome! I'll help you find the perfect gift by analyzing community discussions and finding specific products to buy.</p>
+                    <p>Please describe what kind of gift you're looking for and for whom:</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <textarea 
+                    class="input-field" 
+                    id="messageInput" 
+                    placeholder="Type your message here..."
+                    rows="1"
+                ></textarea>
+                <button class="send-button" id="sendButton">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class GiftRecommendationUI {
+            constructor() {
+                this.chatContainer = document.getElementById('chatContainer');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.sessionId = null;
+                
+                this.initializeEventListeners();
+                this.autoResizeTextarea();
+                this.startConversation();
+            }
+
+            async startConversation() {
+                try {
+                    const response = await fetch('/api/start_conversation', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    this.sessionId = data.session_id;
+                    console.log('Conversation started with session ID:', this.sessionId);
+                } catch (error) {
+                    console.error('Failed to start conversation:', error);
+                    this.displayErrorMessage('Failed to connect to server. Please refresh and try again.');
+                }
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.handleSend());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.handleSend();
+                    }
+                });
+                this.messageInput.addEventListener('input', () => this.autoResizeTextarea());
+            }
+
+            autoResizeTextarea() {
+                this.messageInput.style.height = 'auto';
+                this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+            }
+
+            async handleSend() {
+                const message = this.messageInput.value.trim();
+                if (!message || !this.sessionId) return;
+
+                this.displayUserMessage(message);
+                this.messageInput.value = '';
+                this.autoResizeTextarea();
+                this.setLoading(true);
+
+                try {
+                    const response = await fetch('/api/process_message', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            message: message
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    await this.handleResponse(data);
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.displayErrorMessage('Failed to process your message. Please try again.');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async handleResponse(data) {
+                if (data.error) {
+                    this.displayErrorMessage(data.error);
+                    return;
+                }
+
+                switch (data.type) {
+                    case 'clarifying_questions':
+                        this.displayClarifyingQuestions(data.questions);
+                        break;
+                    case 'next_question':
+                        this.displayNextQuestion(data.question, data.current_question);
+                        break;
+                    case 'start_analysis':
+                        await this.startAnalysis();
+                        break;
+                    default:
+                        this.displayAssistantMessage(data.message || 'Unexpected response');
+                }
+            }
+
+            displayClarifyingQuestions(questions) {
+                const questionsHtml = `
+                    <div class="step-indicator">Step 2</div>
+                    <p>Great! I need a few more details to give you the best recommendations:</p>
+                    <ul class="question-list">
+                        ${questions.map((q, i) => `<li><strong>Q${i+1}:</strong> ${q}</li>`).join('')}
+                    </ul>
+                    <p>Let's start with the first question:</p>
+                    <p><strong>${questions[0]}</strong></p>
+                `;
+                
+                this.displayAssistantMessage(questionsHtml);
+            }
+
+            displayNextQuestion(question, questionIndex) {
+                const questionHtml = `
+                    <div class="step-indicator">Question ${questionIndex + 1}/${questionIndex + 2}</div>
+                    <p><strong>${question}</strong></p>
+                `;
+                this.displayAssistantMessage(questionHtml);
+            }
+
+            async startAnalysis() {
+                this.displayAssistantMessage(
+                    `<div class="step-indicator">Step 3</div>` +
+                    `<div class="loading">Generating personalized recommendations</div>`
+                );
+
+                try {
+                    const response = await fetch('/api/analyze_requirements', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: this.sessionId })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    if (data.type === 'recommendations') {
+                        this.displayRecommendations(data.recommendations);
+                    } else {
+                        throw new Error('Unexpected response format');
+                    }
+                } catch (error) {
+                    console.error('Analysis failed:', error);
+                    this.displayErrorMessage(`Analysis failed: ${error.message}. Please try again.`);
+                }
+            }
+
+            displayRecommendations(recommendations) {
+                const recommendationsHtml = `
+                    <div class="step-indicator">Step 4</div>
+                    <p>Based on community discussions, here are the top recommendations:</p>
+                    <div class="selection-container">
+                        <div class="selection-title">Select your top 3 preferred products:</div>
+                        <div class="selection-grid">
+                            ${recommendations.map((rec, i) => {
+                                const parts = rec.split(' - ');
+                                const title = parts[0].replace(/^\d+\.\s*/, '');
+                                const description = parts[1] || '';
+                                return `
+                                    <div class="selection-item" data-index="${i}">
+                                        <div class="selection-item-number">${i+1}</div>
+                                        <div class="selection-item-title">${title}</div>
+                                        <div class="selection-item-description">${description.substring(0, 100)}...</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <button class="confirm-button" id="confirmSelection" disabled>Confirm Selection (0/3)</button>
+                    </div>
+                `;
+                
+                this.displayAssistantMessage(recommendationsHtml);
+                this.initializeProductSelection();
+            }
+
+            initializeProductSelection() {
+                const selectionItems = document.querySelectorAll('.selection-item');
+                const confirmButton = document.getElementById('confirmSelection');
+                let selectedIndices = [];
+                
+                selectionItems.forEach(item => {
+                    item.addEventListener('click', () => {
+                        const index = parseInt(item.dataset.index);
+                        const isSelected = item.classList.contains('selected');
+                        
+                        if (isSelected) {
+                            item.classList.remove('selected');
+                            selectedIndices = selectedIndices.filter(i => i !== index);
+                        } else if (selectedIndices.length < 3) {
+                            item.classList.add('selected');
+                            selectedIndices.push(index);
+                        }
+                        
+                        confirmButton.textContent = `Confirm Selection (${selectedIndices.length}/3)`;
+                        confirmButton.disabled = selectedIndices.length !== 3;
+                    });
+                });
+                
+                confirmButton.addEventListener('click', async () => {
+                    await this.handleProductSelection(selectedIndices);
+                });
+            }
+
+            async handleProductSelection(selectedIndices) {
+                this.displayAssistantMessage(
+                    `<div class="step-indicator">Step 5</div>` +
+                    `<div class="loading">Finding products for purchase</div>`
+                );
+
+                try {
+                    const response = await fetch('/api/select_products', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            session_id: this.sessionId,
+                            selected_indices: selectedIndices
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    if (data.type === 'final_recommendations') {
+                        this.displayFinalRecommendations(data.product_results);
+                    } else {
+                        throw new Error('Unexpected response format');
+                    }
+                } catch (error) {
+                    console.error('Product selection failed:', error);
+                    this.displayErrorMessage(`Product search failed: ${error.message}. Please try again.`);
+                }
+            }
+
+            displayFinalRecommendations(productResults) {
+                const recommendationsHtml = `
+                    <div class="step-indicator">Complete</div>
+                    <div class="final-recommendations">
+                        <h3>Your Personalized Gift Recommendations - Ready to Buy!</h3>
+                        ${productResults.map(category => `
+                            <div class="recommendation-category">
+                                <div class="category-title">${category.category}</div>
+                                ${category.products.length > 0 ? category.products.map(product => `
+                                    <div class="product-card">
+                                        <div class="product-title">${product.title}</div>
+                                        <div class="product-description">${product.snippet}</div>
+                                        <a href="${product.url}" class="buy-link" target="_blank">View Product</a>
+                                    </div>
+                                `).join('') : '<p>No products found for this category.</p>'}
+                            </div>
+                        `).join('')}
+                    </div>
+                    <p>System completed successfully! You now have specific products with purchase links for your selected gift categories.</p>
+                `;
+                
+                this.displayAssistantMessage(recommendationsHtml);
+                this.setInputEnabled(false);
+            }
+
+            displayUserMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message user';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">You</div>
+                    <div class="message-content">${message}</div>
+                `;
+                this.chatContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            displayAssistantMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">AI</div>
+                    <div class="message-content">${message}</div>
+                `;
+                this.chatContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            displayErrorMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message assistant';
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">AI</div>
+                    <div class="message-content">
+                        <div class="error-message">${message}</div>
+                    </div>
+                `;
+                this.chatContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+
+            setLoading(loading) {
+                this.sendButton.disabled = loading;
+                this.messageInput.disabled = loading;
+            }
+
+            setInputEnabled(enabled) {
+                this.sendButton.disabled = !enabled;
+                this.messageInput.disabled = !enabled;
+                if (!enabled) {
+                    this.messageInput.placeholder = "Conversation completed. Refresh to start a new session.";
+                }
+            }
+
+            scrollToBottom() {
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new GiftRecommendationUI();
+        });
+    </script>
+</body>
+</html>
