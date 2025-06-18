@@ -1666,7 +1666,7 @@ if __name__ == '__main__':
                         <div class="selection-grid">
                             ${recommendations.map((rec, i) => {
                                 const parts = rec.split(' - ');
-                                const title = parts[0].replace(/^\d+\.\s*/, '');
+                                const title = parts[0].replace(/^\\d+\\.\\s*/, '');
                                 const description = parts[1] || '';
                                 return `
                                     <div class="selection-item" data-index="${i}">
